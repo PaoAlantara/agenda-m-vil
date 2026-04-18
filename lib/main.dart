@@ -35,7 +35,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   List<dynamic> _recordatorios = [];
   bool _cargando = true;
 
-  // Variables para guardar lo que el usuario elija en el calendario
+  
   DateTime? _fechaSeleccionada;
   TimeOfDay? _horaSeleccionada;
 
@@ -47,7 +47,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     _obtenerRecordatorios();
   }
 
-  // 1. LEER DATOS
+ 
   Future<void> _obtenerRecordatorios() async {
     try {
       final response = await http.get(Uri.parse(apiUrl));
@@ -63,18 +63,18 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
-  // 2. ABRIR EL CALENDARIO Y RELOJ NATIVO
+  
   Future<void> _seleccionarFechaYHora() async {
-    // Abre el calendario
+    
     final DateTime? fecha = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime.now(), // No dejar elegir fechas en el pasado
+      firstDate: DateTime.now(), 
       lastDate: DateTime(2100),
     );
 
     if (fecha != null) {
-      // Si elige fecha, le pregunta la hora
+
       final TimeOfDay? hora = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.now(),
@@ -87,11 +87,11 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
-  // 3. GUARDAR NUEVO RECORDATORIO (AHORA CON FECHA)
+  
   Future<void> _guardarRecordatorio(String nombre) async {
     if (nombre.trim().isEmpty) return;
+
     
-    // Preparar los datos exactos que Laravel espera
     Map<String, dynamic> datos = {'nombre': nombre};
     
     if (_fechaSeleccionada != null) {
@@ -103,7 +103,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
     _controlador.clear();
     setState(() {
-      _fechaSeleccionada = null; // Limpiar después de guardar
+      _fechaSeleccionada = null; 
       _horaSeleccionada = null;
     });
 
@@ -119,7 +119,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
-  // 4. ELIMINAR RECORDATORIO
+  
   Future<void> _eliminarRecordatorio(int id) async {
     try {
       await http.delete(Uri.parse('$apiUrl/$id'));
@@ -129,7 +129,25 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
-  Color _obtenerColor(String? fechaLimite) {
+  
+  Future<void> _cambiarEstado(int id) async {
+    try {
+      
+      await http.put(Uri.parse('$apiUrl/$id'));
+      
+      
+      _obtenerRecordatorios(); 
+    } catch (e) {
+      print("Error al actualizar estado: $e");
+    }
+  }
+
+  
+  Color _obtenerColor(String? fechaLimite, dynamic estado) {
+    if (estado == 1 || estado == true) {
+      return Colors.grey;
+    }
+
     if (fechaLimite == null) return Colors.grey;
     DateTime fecha = DateTime.parse(fechaLimite);
     DateTime hoy = DateTime.now();
@@ -156,7 +174,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
       ),
       body: Column(
         children: [
-          // ZONA DE ENTRADA CON CALENDARIO
+          
           Container(
             padding: const EdgeInsets.all(16),
             color: Colors.white,
@@ -183,7 +201,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // BOTÓN DE CALENDARIO
+                    
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFFDCFCE7),
@@ -195,7 +213,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // BOTÓN DE ENVIAR
+                    
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF166534),
@@ -208,7 +226,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     ),
                   ],
                 ),
-                // Mostrar un pequeño texto si el usuario eligió una fecha antes de enviar
+                
                 if (_fechaSeleccionada != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8, left: 4),
@@ -222,7 +240,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
             ),
           ),
 
-          // LISTA DE RECORDATORIOS
+          
           Expanded(
             child: _cargando 
               ? const Center(child: CircularProgressIndicator())
@@ -234,10 +252,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     itemBuilder: (context, index) {
                       final item = _recordatorios[index];
                       
-                      // Construir el texto de fecha y hora para la lista
+                      
                       String infoExtra = "";
                       if (item['fecha_limite'] != null) infoExtra += item['fecha_limite'];
-                      if (item['hora'] != null) infoExtra += " • ${item['hora'].substring(0, 5)}"; // Cortar los segundos
+                      if (item['hora'] != null) infoExtra += " • ${item['hora'].substring(0, 5)}"; 
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -245,15 +263,27 @@ class _AgendaScreenState extends State<AgendaScreen> {
                         clipBehavior: Clip.antiAlias,
                         child: Container(
                           decoration: BoxDecoration(
-                            border: Border(top: BorderSide(color: _obtenerColor(item['fecha_limite']), width: 5)),
+                            
+                            border: Border(top: BorderSide(color: _obtenerColor(item['fecha_limite'], item['estado']), width: 5)),
                           ),
                           child: ListTile(
                             leading: Checkbox(
-                              value: item['estado'] == 1,
-                              onChanged: (val) {},
+                             
+                              value: item['estado'] == 1 || item['estado'] == true, 
+                              onChanged: (val) {
+                                _cambiarEstado(item['id']);
+                              },
                               activeColor: const Color(0xFF166534),
                             ),
-                            title: Text(item['nombre'], style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF166534))),
+                           
+                            title: Text(
+                              item['nombre'], 
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold, 
+                                color: (item['estado'] == 1 || item['estado'] == true) ? Colors.grey : const Color(0xFF166534),
+                                decoration: (item['estado'] == 1 || item['estado'] == true) ? TextDecoration.lineThrough : null,
+                              )
+                            ),
                             subtitle: infoExtra.isNotEmpty ? Text(infoExtra) : null,
                             trailing: IconButton(
                               icon: const Icon(Icons.delete_outline, color: Colors.grey),
